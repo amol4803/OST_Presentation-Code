@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Input and output file paths
+input_file="data.csv"
+output_file="processed_data.csv"
+
+# Check if the input file exists
+if [[ ! -f $input_file ]]; then
+  echo "Error: Input file $input_file not found."
+  exit 1
+fi
+
+# Step 1: Data Cleaning
+# Remove rows with empty fields
+echo "Cleaning data: Removing rows with empty fields..."
+awk -F, 'NF == 4' "$input_file" > cleaned_data.csv
+
+# Step 2: Data Transformation
+# Add a new column for discounted sales (10% discount)
+echo "Transforming data: Adding a 'Discounted Sales' column..."
+awk -F, 'BEGIN {OFS=","} 
+NR==1 {print $0, "Discounted Sales"} 
+NR>1 {discounted_sales=$4 * 0.9; print $0, discounted_sales}' cleaned_data.csv > transformed_data.csv
+
+# Step 3: Filtering
+# Filter rows where sales are greater than 120
+echo "Filtering data: Keeping rows where Sales > 120..."
+awk -F, 'BEGIN {OFS=","} NR==1 || $4 > 120' transformed_data.csv > filtered_data.csv
+
+# Step 4: Aggregation
+# Sum sales by region
+echo "Aggregating data: Calculating total sales by region..."
+awk -F, 'BEGIN {OFS=","} 
+NR == 1 {print "Region", "Total Sales"; next} 
+NR > 1 {sales[$2] += $4} 
+END {for (region in sales) print region, sales[region]}' filtered_data.csv > aggregated_data.csv
+
+# Save final output
+mv aggregated_data.csv "$output_file"
+
+# Clean up intermediate files
+rm cleaned_data.csv transformed_data.csv filtered_data.csv
+
+echo "Data processing complete. Results saved in $output_file."
